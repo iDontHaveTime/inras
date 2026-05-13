@@ -5,14 +5,14 @@
 ## Overview
 
 Supported modes:
- - AMD64 (64bit mode)
- - x86 (32bit mode)
- - m16 (16bit mode, partial support)
+ - x86-64 (64-bit mode)
+ - x86 (32-bit mode)
+ - m16 (16-bit mode, partial support)
 
 ## Roadmap
 
 **1. Assembler frontend**
- - Simple assembling for AT&T syntax assembly.
+ - Simple assembly support for AT&T syntax.
 
 **2. x86 Extensions**
  - SSE, SSE2, AVX2, x87, etc..
