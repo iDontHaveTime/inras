@@ -1,0 +1,12 @@
+# Taken from https://github.com/iDontHaveTime/Inertia
+
+# Folders
+build/
+.vscode/
+.zed/
+.cache/
+
+# Files
+*.o
+*.a
+*.so
