@@ -1,11 +1,10 @@
 #include <inras/Assembler/Assembler.h>
+#include <inras/Defs/Addressing.h>
 #include <inras/Defs/Defs.h>
 #include <inras/Defs/Register.h>
+#include <inras/Instruction/Instruction.h>
 
 #include <cstring>
-
-#include "inras/Defs/Addressing.h"
-#include "inras/Instruction/Instruction.h"
 
 namespace as {
 
@@ -114,9 +113,12 @@ static inline Assembler::Errc check2OperandInst(Addressing addr, regs reg,
 
     if(needsRex) {
         if(sizeOfInst == 8) {
-            if(isHighBits(reg)) return Assembler::Errc::MixingREXAndHighBit;
-            if(highBitEncoding(addr.getRM()) && !addr.RexBaseOrRM())
+            if(isHighBits(reg)) {
                 return Assembler::Errc::MixingREXAndHighBit;
+            }
+            if(highBitEncoding(addr.getRM()) && !addr.RexBaseOrRM()) {
+                return Assembler::Errc::MixingREXAndHighBit;
+            }
         }
         if(mode != Mode::x86_64)
             return Assembler::Errc::REXPrefixInNon64BitMode;
@@ -248,9 +250,9 @@ Assembler::Errc Assembler::encodeGeneric2OpRRM(Inst& inst, regs dest,
         }
     }
 
-    if(auto err = addASOPrefixIfNeeded(enc, addrSize, mode_); err != Errc()) {
-        return err;
-    }
+    if(src.isMemory())
+        if(auto err = addASOPrefixIfNeeded(enc, addrSize, mode_); err != Errc())
+            return err;
 
     if(needsRex) {
         addREXPrefix(enc, src, dest, instSize);

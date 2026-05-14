@@ -6,6 +6,8 @@
 
 #include <inras/Defs/Defs.h>
 
+#include <string_view>
+
 namespace as {
 
 enum class regs : unsigned {
@@ -17,7 +19,6 @@ enum class regs : unsigned {
 constexpr byte getEncoding(regs reg) {
     switch(reg) {
         case regs::al:
-        case regs::ah:
         case regs::ax:
         case regs::eax:
         case regs::rax:
@@ -27,7 +28,6 @@ constexpr byte getEncoding(regs reg) {
         case regs::r8:
             return 0b000;
         case regs::cl:
-        case regs::ch:
         case regs::cx:
         case regs::ecx:
         case regs::rcx:
@@ -37,7 +37,6 @@ constexpr byte getEncoding(regs reg) {
         case regs::r9:
             return 0b001;
         case regs::dl:
-        case regs::dh:
         case regs::dx:
         case regs::edx:
         case regs::rdx:
@@ -47,7 +46,6 @@ constexpr byte getEncoding(regs reg) {
         case regs::r10:
             return 0b010;
         case regs::bl:
-        case regs::bh:
         case regs::bx:
         case regs::ebx:
         case regs::rbx:
@@ -56,6 +54,7 @@ constexpr byte getEncoding(regs reg) {
         case regs::r11d:
         case regs::r11:
             return 0b011;
+        case regs::ah:
         case regs::spl:
         case regs::sp:
         case regs::esp:
@@ -65,6 +64,7 @@ constexpr byte getEncoding(regs reg) {
         case regs::r12d:
         case regs::r12:
             return 0b100;
+        case regs::ch:
         case regs::bpl:
         case regs::bp:
         case regs::ebp:
@@ -74,6 +74,7 @@ constexpr byte getEncoding(regs reg) {
         case regs::r13d:
         case regs::r13:
             return 0b101;
+        case regs::dh:
         case regs::sil:
         case regs::si:
         case regs::esi:
@@ -83,6 +84,7 @@ constexpr byte getEncoding(regs reg) {
         case regs::r14d:
         case regs::r14:
             return 0b110;
+        case regs::bh:
         case regs::dil:
         case regs::di:
         case regs::edi:
@@ -191,6 +193,16 @@ constexpr static bool highBitEncoding(byte enc) {
             return true;
         default:
             return false;
+    }
+}
+
+constexpr std::string_view getRegAsStr(regs reg) {
+    switch(reg) {
+#define NEW_REGISTER(IDENT, ...) \
+    case regs::IDENT:            \
+        return #IDENT;
+#include <inras/Macros/RegMacros.inc>
+#undef NEW_REGISTER
     }
 }
 

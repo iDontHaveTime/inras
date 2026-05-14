@@ -44,6 +44,70 @@ as::Assembler assembler;
 #include <inras/Macros/InstMacros.inc>
 #undef NEW_FIXED_INSTRUCTION
 
+// Should this be a test case?
+//
+// constexpr static as::regs TestRegs[4][16] = {
+//     {as::regs::al, as::regs::bl, as::regs::cl, as::regs::dl, as::regs::sil,
+//      as::regs::dil, as::regs::spl, as::regs::bpl, as::regs::r8b,
+//      as::regs::r9b, as::regs::r10b, as::regs::r11b, as::regs::r12b,
+//      as::regs::r13b, as::regs::r14b, as::regs::r15b},
+//     {as::regs::ax, as::regs::bx, as::regs::cx, as::regs::dx, as::regs::si,
+//      as::regs::di, as::regs::sp, as::regs::bp, as::regs::r8w, as::regs::r9w,
+//      as::regs::r10w, as::regs::r11w, as::regs::r12w, as::regs::r13w,
+//      as::regs::r14w, as::regs::r15w},
+//     {as::regs::eax, as::regs::ebx, as::regs::ecx, as::regs::edx,
+//     as::regs::esi,
+//      as::regs::edi, as::regs::esp, as::regs::ebp, as::regs::r8d,
+//      as::regs::r9d, as::regs::r10d, as::regs::r11d, as::regs::r12d,
+//      as::regs::r13d, as::regs::r14d, as::regs::r15d},
+//     {as::regs::rax, as::regs::rbx, as::regs::rcx, as::regs::rdx,
+//     as::regs::rsi,
+//      as::regs::rdi, as::regs::rsp, as::regs::rbp, as::regs::r8, as::regs::r9,
+//      as::regs::r10, as::regs::r11, as::regs::r12, as::regs::r13,
+//      as::regs::r14, as::regs::r15}};
+
+// int testExample() {
+//     as::Inst inst;
+
+//     for(unsigned size = 0; size < 4; size++) {
+//         const as::regs* regArray = TestRegs[size];
+//         unsigned addrSize;
+//         switch(size) {
+//             case 0:
+//                 addrSize = 8;
+//                 break;
+//             case 1:
+//                 addrSize = 16;
+//                 break;
+//             case 2:
+//                 addrSize = 32;
+//                 break;
+//             case 3:
+//                 addrSize = 64;
+//                 break;
+//         }
+
+//         for(unsigned i = 0; i < 16; i++) {
+//             for(unsigned j = 0; j < 16; j++) {
+//                 auto err = assembler.encodeAdd(
+//                     inst, regArray[i],
+//                     as::Addressing::DirectReg(regArray[j]), addrSize);
+//                 std::cout << "dest: " << as::getRegAsStr(regArray[i])
+//                           << ", src: " << as::getRegAsStr(regArray[j]);
+//                 if(err != as::AsmErrc()) {
+//                     std::cout << ", error: " <<
+//                     as::Assembler::getErrcStr(err)
+//                               << '\n';
+//                     continue;
+//                 }
+//                 std::cout << ", enc: " << inst << '\n';
+//             }
+//         }
+//     }
+
+//     return SUCCESS;
+// }
+
 #define ERR_STR(x)                                                       \
     if(x != decltype(x)()) {                                             \
         std::cout << "Assembler error: " << as::Assembler::getErrcStr(x) \
