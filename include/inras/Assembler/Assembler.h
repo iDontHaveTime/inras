@@ -15,6 +15,9 @@
 namespace as {
 
 /// @brief Provides functions to assemble instructions.
+///
+/// For more accurate descriptions see the defined functions and not macro
+/// defined ones. For example encodeMov has a description.
 class Assembler {
     Mode mode_; ///< Current set mode.
 
@@ -131,12 +134,6 @@ public:
         return addPrefix(inst, prefix::GS);
     }
 
-#define NEW_FIXED_INSTRUCTION(NAME, MODE, ENC) Errc encode##NAME(Inst&) const;
-
-#include <inras/Macros/InstMacros.inc>
-
-#undef NEW_FIXED_INSTRUCTION
-
 private:
     Errc encodeGeneric2OpRMR(Inst& inst, Addressing dest, regs src,
                              unsigned addrSize, byte opNorm, byte op8bit) const;
@@ -144,9 +141,48 @@ private:
                              unsigned addrSize, byte opNorm, byte op8bit) const;
     Errc encodeGenericAddrImm(Inst& inst, Addressing dest, int32_t imm,
                               unsigned addrSize, bool ASOprefix, byte opNorm,
-                              byte op8bit) const;
+                              byte op8bit, byte regField) const;
+    /// @brief encodes imm to AL/AX/EAX/RAX.
+    /// @note Usually present in arithmetic.
+    /// @param addrSize Acts as register size in this case.
+    Errc encodeGenericAXImm(Inst& inst, unsigned addrSize, int32_t imm,
+                            byte opNorm, byte op8bit) const;
 
 public:
+#define NEW_FIXED_INSTRUCTION(NAME, MODE, ENC) Errc encode##NAME(Inst&) const;
+#define GENERIC_AX_IMM(NAME, OPNORM, OP8BIT, EXCEPT)                      \
+    Errc encode##NAME(Inst& inst, unsigned addrSize, int32_t imm) const { \
+        EXCEPT                                                            \
+        return encodeGenericAXImm(inst, addrSize, imm, OPNORM, OP8BIT);   \
+    }
+#define GENERIC_2OP_RMR(NAME, OPNORM, OP8BIT, EXCEPT)                          \
+    Errc encode##NAME(Inst& inst, Addressing dest, regs src,                   \
+                      unsigned addrSize) const {                               \
+        EXCEPT                                                                 \
+        return encodeGeneric2OpRMR(inst, dest, src, addrSize, OPNORM, OP8BIT); \
+    }
+#define GENERIC_2OP_RRM(NAME, OPNORM, OP8BIT, EXCEPT)                          \
+    Errc encode##NAME(Inst& inst, regs dest, Addressing src,                   \
+                      unsigned addrSize) const {                               \
+        EXCEPT                                                                 \
+        return encodeGeneric2OpRRM(inst, dest, src, addrSize, OPNORM, OP8BIT); \
+    }
+#define GENERIC_ADDR_IMM(NAME, OPNORM, OP8BIT, REGFIELD, EXCEPT)          \
+    Errc encode##NAME(Inst& inst, Addressing dest, int32_t imm,           \
+                      unsigned addrSize, bool ASOprefix = false) const {  \
+        EXCEPT                                                            \
+        return encodeGenericAddrImm(inst, dest, imm, addrSize, ASOprefix, \
+                                    OPNORM, OP8BIT, REGFIELD);            \
+    }
+
+#include <inras/Macros/InstMacros.inc>
+
+#undef GENERIC_ADDR_IMM
+#undef GENERIC_2OP_RRM
+#undef GENERIC_2OP_RMR
+#undef GENERIC_AX_IMM
+#undef NEW_FIXED_INSTRUCTION
+
     /// @brief Encodes a mov %reg, %r/m
     /// @note addrSize is ignored when the addressing isn't memory.
     Errc encodeMov(Inst& inst, Addressing dest, regs src,
@@ -165,7 +201,7 @@ public:
     Errc encodeMov(Inst& inst, Addressing dest, int32_t imm, unsigned addrSize,
                    bool ASOprefix = false) const {
         return encodeGenericAddrImm(inst, dest, imm, addrSize, ASOprefix, 0xC7,
-                                    0xC6);
+                                    0xC6, 0);
     }
     Errc encodeMov(Inst& inst, regs dest, int64_t imm) const;
 };

@@ -199,9 +199,9 @@ Assembler::Errc Assembler::encodeGeneric2OpRMR(Inst& inst, Addressing dest,
         }
     }
 
-    if(auto err = addASOPrefixIfNeeded(enc, addrSize, mode_); err != Errc()) {
-        return err;
-    }
+    if(dest.isMemory())
+        if(auto err = addASOPrefixIfNeeded(enc, addrSize, mode_); err != Errc())
+            return err;
 
     if(needsRex) {
         addREXPrefix(enc, dest, src, instSize);
@@ -270,7 +270,8 @@ Assembler::Errc Assembler::encodeGeneric2OpRRM(Inst& inst, regs dest,
 Assembler::Errc Assembler::encodeGenericAddrImm(Inst& inst, Addressing dest,
                                                 int32_t imm, unsigned addrSize,
                                                 bool aso, byte opNorm,
-                                                byte op8bit) const {
+                                                byte op8bit,
+                                                byte regField) const {
     byte* enc = inst.getEncoding();
 
     bool needsRex = false;
@@ -356,11 +357,11 @@ Assembler::Errc Assembler::encodeGenericAddrImm(Inst& inst, Addressing dest,
     *enc++ = opNorm;
 
     byte modrm = dest.getModRM();
-    encode::setReg(modrm, 0);
+    encode::setReg(modrm, regField);
     *enc++ = modrm;
 
     addSIBAndDisp(inst, enc, dest);
-
+    
     std::memcpy(enc, &imm, immSize);
     enc += immSize;
 
@@ -411,6 +412,38 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, regs dest, int64_t imm) const {
 
     opcode |= getEncoding(dest);
     *enc++ = opcode;
+
+    std::memcpy(enc, &imm, immSize);
+    enc += immSize;
+
+    inst.setEncodingSize(enc - inst.getEncoding());
+    return Errc();
+}
+
+Assembler::Errc Assembler::encodeGenericAXImm(Inst& inst, unsigned addrSize,
+                                              int32_t imm, byte opNorm,
+                                              byte op8bit) const {
+    byte* enc = inst.getEncoding();
+    unsigned immSize = 1;
+
+    switch(addrSize) {
+        case 8:
+            opNorm = op8bit;
+            break;
+        case 16:
+            immSize = 2;
+            break;
+        case 64:
+            if(mode_ != Mode::x86_64) return Errc::InstNotSupportedInMode;
+            *enc++ = prefix::REX(true, false, false, false);
+        case 32:
+            immSize = 4;
+            break;
+        default:
+            return Errc::InvalidAddressSize;
+    }
+
+    *enc++ = opNorm;
 
     std::memcpy(enc, &imm, immSize);
     enc += immSize;

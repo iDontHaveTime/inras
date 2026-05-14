@@ -97,3 +97,63 @@ DEFINE_TEST(Mov) {
 
     return SUCCESS;
 }
+
+DEFINE_TEST(AddC) {
+    std::cout << "testing normal addc...\n";
+    as::Inst addc;
+
+    auto err = assembler.encodeAddC(
+        addc, as::Addressing::DirectReg(as::regs::eax), as::regs::esp, 32);
+    ERR_STR(err)
+
+    std::cout << "addc %esp, %eax: " << addc << '\n';
+
+    std::cout << "testing ax exception...\n";
+
+    err = assembler.encodeAddC(addc, as::Addressing::DirectReg(as::regs::rax),
+                               42, 64);
+    ERR_STR(err)
+
+    std::cout << "addc $42, %rax: " << addc << '\n';
+
+    std::cout << "testing no exception imm...\n";
+
+    err = assembler.encodeAddC(addc, as::Addressing::DirectReg(as::regs::rbx),
+                               42, 64);
+    ERR_STR(err)
+
+    std::cout << "addc $42, %rbx: " << addc << '\n';
+
+    return SUCCESS;
+}
+
+#if defined(__linux__) && defined(__x86_64__)
+#include <sys/mman.h>
+#endif
+
+[[noreturn]]
+DEFINE_TEST(MMapExec) {
+#if !defined(__linux__) || !defined(__x86_64__)
+    std::cout << "MMapExec: platform unsupported\n";
+    std::exit(0);
+#else
+    as::byte* addr = (as::byte*)mmap(nullptr, 0x1000, PROT_WRITE | PROT_READ,
+                                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    /// movl $60, %eax
+    /// movl $42, %edi
+    /// syscall
+    as::Inst mov, movedi, syscall;
+    assembler.encodeMov(mov, as::regs::eax, 60);
+    assembler.encodeMov(movedi, as::regs::edi, 42);
+    assembler.encodeSyscall(syscall);
+
+    syscall.writeInto(movedi.writeInto(mov.writeInto(addr)));
+
+    std::cout << mov << ' ' << movedi << ' ' << syscall << std::endl; // flush
+
+    mprotect(addr, 0x1000, PROT_EXEC | PROT_READ);
+
+    ((void (*)())addr)();
+    __builtin_unreachable();
+#endif
+}

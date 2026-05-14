@@ -146,6 +146,14 @@ public:
 
         return os.write(out, ptr - out);
     }
+
+    /// @brief Writes the encoding into the buffer.
+    /// @param dest The buffer to write to.
+    /// @return dest + getEncodingSize().
+    byte* writeInto(byte* dest) const noexcept {
+        std::memcpy(dest, encoding_, encodingSize_);
+        return dest + encodingSize_;
+    }
 };
 
 } // namespace as

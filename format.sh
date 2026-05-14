@@ -4,6 +4,6 @@
 
 EXCLUDE_DIRS="build"
 
-find . -type f \( -name "*.cpp" -o -name "*.h" \) \
+find . -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.inc" \) \
   ! -regex ".*\($EXCLUDE_DIRS\).*" \
   -exec clang-format -i {} \;
