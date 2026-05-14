@@ -10,4 +10,4 @@ NEW_TEST(NAME)
 NEW_TEST(Mov)
 
 #define DEFINE_TEST(NAME) \
-bool test##NAME()
+int test##NAME()

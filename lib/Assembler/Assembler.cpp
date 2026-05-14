@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "inras/Defs/Addressing.h"
+#include "inras/Instruction/Instruction.h"
 
 namespace as {
 
@@ -28,6 +29,8 @@ std::string_view Assembler::getErrcStr(Errc errc) noexcept {
             return "REXPrefixInNon64BitMode";
         case Errc::RegisterNotAllowed:
             return "RegisterNotAllowed";
+        case Errc::PrefixNotAddedNotEnoughSpace:
+            return "PrefixNotAddedNotEnoughSpace";
     }
 }
 
@@ -36,7 +39,7 @@ static inline bool checkModeCompat(Mode cur, byte srcmode) {
 }
 
 #define NEW_FIXED_INSTRUCTION(NAME, MODE, ENC)                                 \
-    Assembler::Errc Assembler::encode##NAME(Inst& inst) const {                      \
+    Assembler::Errc Assembler::encode##NAME(Inst& inst) const {                \
         if(!checkModeCompat(mode_, MODE)) return Errc::InstNotSupportedInMode; \
         constexpr static byte enc[] = {ENC};                                   \
         inst.setEncoding(enc, sizeof(enc));                                    \
@@ -46,6 +49,20 @@ static inline bool checkModeCompat(Mode cur, byte srcmode) {
 #include <inras/Macros/InstMacros.inc>
 
 #undef NEW_FIXED_INSTRUCTION
+
+Assembler::Errc Assembler::addPrefix(Inst& inst, byte p) {
+    unsigned size = inst.getEncodingSize();
+    if(size == Inst::INSTRUCTION_SIZE) {
+        return Errc::PrefixNotAddedNotEnoughSpace;
+    }
+    byte* enc = inst.getEncoding();
+
+    std::memmove(enc + 1, enc, size++);
+    *enc = p;
+
+    inst.setEncodingSize(size);
+    return Errc();
+}
 
 static inline bool instSizeCheck(Mode mode, unsigned instSize) {
     switch(instSize) {
@@ -157,8 +174,9 @@ static inline void addSIBAndDisp(Inst& inst, byte*& enc, Addressing addr) {
     }
 }
 
-Assembler::Errc Assembler::encodeMov(Inst& inst, Addressing dest, regs src,
-                                     unsigned addrSize) const {
+Assembler::Errc Assembler::encodeGeneric2OpRMR(Inst& inst, Addressing dest,
+                                               regs src, unsigned addrSize,
+                                               byte opNorm, byte op8bit) const {
     bool needsRex;
     if(auto err = check2OperandInst(dest, src, mode_, needsRex);
        err != Errc()) {
@@ -166,14 +184,13 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, Addressing dest, regs src,
     }
     byte* enc = inst.getEncoding();
 
-    byte opcode = 0x89;
     unsigned instSize = getBits(src);
     if(!instSizeCheck(mode_, instSize)) {
         return Errc::InstNotSupportedInMode;
     }
 
     if(instSize == 8) {
-        opcode = 0x88;
+        opNorm = op8bit;
     }
 
     if(byte(mode_) > byte(Mode::m16)) {
@@ -182,13 +199,15 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, Addressing dest, regs src,
         }
     }
 
-    addASOPrefixIfNeeded(enc, addrSize, mode_);
+    if(auto err = addASOPrefixIfNeeded(enc, addrSize, mode_); err != Errc()) {
+        return err;
+    }
 
     if(needsRex) {
         addREXPrefix(enc, dest, src, instSize);
     }
 
-    *enc++ = opcode;
+    *enc++ = opNorm;
 
     byte modrm = dest.getModRM();
     encode::setReg(modrm, getEncoding(src));
@@ -201,8 +220,10 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, Addressing dest, regs src,
     return Errc();
 }
 
-Assembler::Errc Assembler::encodeMov(Inst& inst, regs dest, Addressing src,
-                                     unsigned addrSize) const {
+Assembler::Errc Assembler::encodeGeneric2OpRRM(Inst& inst, regs dest,
+                                               Addressing src,
+                                               unsigned addrSize, byte opNorm,
+                                               byte op8bit) const {
     bool needsRex;
     if(auto err = check2OperandInst(src, dest, mode_, needsRex);
        err != Errc()) {
@@ -210,14 +231,13 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, regs dest, Addressing src,
     }
     byte* enc = inst.getEncoding();
 
-    byte opcode = 0x8B;
     unsigned instSize = getBits(dest);
     if(!instSizeCheck(mode_, instSize)) {
         return Errc::InstNotSupportedInMode;
     }
 
     if(instSize == 8) {
-        opcode = 0x8A;
+        opNorm = op8bit;
     }
 
     if(byte(mode_) > byte(Mode::m16)) {
@@ -226,13 +246,15 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, regs dest, Addressing src,
         }
     }
 
-    addASOPrefixIfNeeded(enc, addrSize, mode_);
+    if(auto err = addASOPrefixIfNeeded(enc, addrSize, mode_); err != Errc()) {
+        return err;
+    }
 
     if(needsRex) {
         addREXPrefix(enc, src, dest, instSize);
     }
 
-    *enc++ = opcode;
+    *enc++ = opNorm;
 
     byte modrm = src.getModRM();
     encode::setReg(modrm, getEncoding(dest));
@@ -245,11 +267,12 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, regs dest, Addressing src,
     return Errc();
 }
 
-Assembler::Errc Assembler::encodeMov(Inst& inst, Addressing dest, int32_t imm,
-                                     unsigned addrSize, bool aso) const {
+Assembler::Errc Assembler::encodeGenericAddrImm(Inst& inst, Addressing dest,
+                                                int32_t imm, unsigned addrSize,
+                                                bool aso, byte opNorm,
+                                                byte op8bit) const {
     byte* enc = inst.getEncoding();
 
-    byte opcode = 0xC7;
     bool needsRex = false;
     unsigned immSize = 0;
 
@@ -259,7 +282,7 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, Addressing dest, int32_t imm,
         }
         switch(addrSize) {
             case 8:
-                opcode = 0xC6;
+                opNorm = op8bit;
                 immSize = 1;
                 break;
             case 16:
@@ -292,7 +315,7 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, Addressing dest, int32_t imm,
 
         switch(size) {
             case 8:
-                opcode = 0xC6;
+                opNorm = op8bit;
                 immSize = 1;
                 break;
             case 16:
@@ -330,7 +353,7 @@ Assembler::Errc Assembler::encodeMov(Inst& inst, Addressing dest, int32_t imm,
                         dest.RexBaseOrRM());
     }
 
-    *enc++ = opcode;
+    *enc++ = opNorm;
 
     byte modrm = dest.getModRM();
     encode::setReg(modrm, 0);

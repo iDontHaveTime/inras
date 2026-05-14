@@ -4,44 +4,52 @@
 #include <inras/Defs/Register.h>
 #include <inras/Instruction/Instruction.h>
 
-#include <cstring>
 #include <iostream>
 
 #include "../Tests/Tests.inc"
 
 as::Assembler assembler;
 
-#define DEFINE_FIXED_TEST(NAME, ENCSIZE, ...)                                  \
+#define SUCCESS 1
+#define IGNORE 0
+#define FAILURE -1
+
+#define DEFINE_FIXED_TEST(NAME, ...)                                           \
     DEFINE_TEST(NAME) {                                                        \
         as::Inst inst;                                                         \
         auto err = assembler.encode##NAME(inst);                               \
-        if(err != decltype(err)()) {                                           \
-            std::cout << #NAME ": assembler encountered an internal error\n";  \
-            return false;                                                      \
-        }                                                                      \
-        if(inst.getEncodingSize() != ENCSIZE) {                                \
-            std::cout << #NAME ": encoding did not match the expected size\n"; \
-            return false;                                                      \
-        }                                                                      \
         constexpr static as::byte expected[] = {__VA_ARGS__};                  \
-        if(std::memcmp(inst.getEncoding(), expected, ENCSIZE)) {               \
+        if(err != decltype(err)()) {                                           \
+            std::cout << #NAME ": assembler encountered an error: "            \
+                      << as::Assembler::getErrcStr(err) << '\n';               \
+            if(err == as::AsmErrc::InstNotSupportedInMode) return IGNORE;      \
+            return FAILURE;                                                    \
+        }                                                                      \
+        if(inst.getEncodingSize() != sizeof(expected)) {                       \
+            std::cout << #NAME ": encoding did not match the expected size\n"; \
+            return FAILURE;                                                    \
+        }                                                                      \
+        if(std::memcmp(inst.getEncoding(), expected, sizeof(expected))) {      \
             std::cout << #NAME                                                 \
                 ": encoding did not match the expected encoding\n";            \
             std::cout << "instead got this encoding: " << inst << '\n';        \
-            return false;                                                      \
+            return FAILURE;                                                    \
         }                                                                      \
         std::cout << #NAME ": final encoding: " << inst << '\n';               \
-        return true;                                                           \
+        return SUCCESS;                                                        \
     }
 
-DEFINE_FIXED_TEST(Syscall, 2, 0x0F, 0x05)
-DEFINE_FIXED_TEST(NearRet, 1, 0xC3)
-DEFINE_FIXED_TEST(FarRet, 1, 0xCB)
+#define NEW_FIXED_INSTRUCTION(IDENT, MODE, ...) \
+    DEFINE_FIXED_TEST(IDENT, __VA_ARGS__)
+#include <inras/Macros/InstMacros.inc>
+#undef NEW_FIXED_INSTRUCTION
 
-#define ERR_STR(x)                                                           \
-    if(x != decltype(x)()) {                                                 \
-        std::cout << "Assembler error: " << as::Assembler::getErrcStr(x) << '\n'; \
-        return false;                                                        \
+#define ERR_STR(x)                                                       \
+    if(x != decltype(x)()) {                                             \
+        std::cout << "Assembler error: " << as::Assembler::getErrcStr(x) \
+                  << '\n';                                               \
+        if(x == as::AsmErrc::InstNotSupportedInMode) return IGNORE;      \
+        return FAILURE;                                                  \
     }
 
 DEFINE_TEST(Mov) {
@@ -87,5 +95,5 @@ DEFINE_TEST(Mov) {
 
     std::cout << "movabsq $0xF0F0F0F0F0F0F0F0, %rbp: " << mov << '\n';
 
-    return true;
+    return SUCCESS;
 }

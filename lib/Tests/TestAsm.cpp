@@ -4,13 +4,13 @@
 #include <string_view>
 #include <utility>
 
-#define NEW_TEST(Name) extern bool test##Name(void);
+#define NEW_TEST(Name) extern int test##Name(void);
 #include "../Tests/Tests.inc"
 #undef NEW_TEST
 
 int main() {
     bool success = true;
-    using test_t = std::pair<std::string_view, bool (*)(void)>;
+    using test_t = std::pair<std::string_view, int (*)(void)>;
 #define NEW_TEST(Name) {#Name, test##Name},
     constexpr static test_t tests[] = {
 // INCLUDES START HERE
@@ -20,8 +20,16 @@ int main() {
 #undef NEW_TEST
 
     for(const auto& test : tests) {
-        bool res = test.second();
-        std::cout << test.first << ": " << (res ? "success\n" : "failure\n");
+        int res = test.second();
+        if(res == 1) {
+            std::cout << test.first << ": success\n";
+        }
+        else if(res == -1) {
+            std::cout << test.first << ": failure\n";
+        }
+        else {
+            std::cout << test.first << ": ignored\n";
+        }
     }
 
     return !success;
