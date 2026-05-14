@@ -279,7 +279,8 @@ GENERIC_ADDR_IMM(Xor, 0x81, 0x80, 6, X86ARITH_AX_EXCEPTION_ADDR(Xor, DEST))
 /// lea
 GENERIC_2OP_RRM(Lea, 0x8D, 0x00,
                 if(GET_REG_SIZE(DEST) == 8 ||
-                   addrSize == 8) return Errc::InvalidAddressSize;)
+                   addrSize == 8) return Errc::InvalidAddressSize;
+                if(ADDR_IS_REG(SOURCE)) return Errc::NotAMemoryOperand;)
 
 #undef X86ARITH_AX_EXCEPTION_ADDR
 

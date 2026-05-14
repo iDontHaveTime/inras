@@ -31,6 +31,8 @@ std::string_view Assembler::getErrcStr(Errc errc) noexcept {
             return "RegisterNotAllowed";
         case Errc::PrefixNotAddedNotEnoughSpace:
             return "PrefixNotAddedNotEnoughSpace";
+        case Errc::NotAMemoryOperand:
+            return "NotAMemoryOperand";
     }
 }
 
@@ -361,7 +363,7 @@ Assembler::Errc Assembler::encodeGenericAddrImm(Inst& inst, Addressing dest,
     *enc++ = modrm;
 
     addSIBAndDisp(inst, enc, dest);
-    
+
     std::memcpy(enc, &imm, immSize);
     enc += immSize;
 

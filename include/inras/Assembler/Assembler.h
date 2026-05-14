@@ -39,8 +39,9 @@ public:
                                  ///< mode.
         RegisterNotAllowed, ///< When a register that is not supported in that
                             ///< instruction was passed in.
-        PrefixNotAddedNotEnoughSpace ///< Cannot add a prefix since the
-                                     ///< instruction is too long for it.
+        PrefixNotAddedNotEnoughSpace, ///< Cannot add a prefix since the
+                                      ///< instruction is too long for it.
+        NotAMemoryOperand ///< When the addressing operand needed to be memory.
     };
 
     static std::string_view getErrcStr(Errc errc) noexcept;
